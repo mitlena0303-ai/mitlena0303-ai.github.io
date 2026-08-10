@@ -1,0 +1,48 @@
+---
+import { SITE, FUNNEL, funnelUrl } from '../site';
+const year = new Date().getFullYear();
+const twUrl = funnelUrl(FUNNEL.leadMagnet.url, FUNNEL.leadMagnet.campaign, 'cta_footer', Astro.url.pathname);
+const coreUrl = funnelUrl(FUNNEL.core.url, FUNNEL.core.campaign, 'cta_footer', Astro.url.pathname);
+---
+<footer class="site-footer">
+  <div class="wrap cols">
+    <div>
+      <p class="foot-title">{SITE.name}</p>
+      <p class="meta">{SITE.tagline}</p>
+    </div>
+    <div class="links">
+      <a href="/guides">Все статьи</a>
+      <a href="/notes">Конспекты видео</a>
+      <a href="/news">Новости</a>
+      <a href={twUrl}>{FUNNEL.leadMagnet.label}</a>
+      <a href={coreUrl}>{FUNNEL.core.label}</a>
+    </div>
+  </div>
+  <div class="wrap">
+    <p class="meta copy">© {year} · {SITE.author}</p>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    margin-top: 88px;
+    border-top: 1px solid var(--line);
+    padding: 36px 0 28px;
+    background: var(--bg-soft);
+  }
+  .cols {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+  .foot-title {
+    font-weight: 800;
+    color: var(--ink);
+    margin: 0 0 4px;
+  }
+  .links { display: flex; flex-direction: column; gap: 8px; }
+  .links a { color: var(--ink); font-size: 15px; text-decoration: none; }
+  .links a:hover { color: var(--link); }
+  .copy { margin-top: 28px; }
+</style>

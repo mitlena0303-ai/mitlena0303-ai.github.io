@@ -1,0 +1,117 @@
+---
+import { SITE, METRIKA_ID, FUNNEL } from '../site';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css';
+
+// Цели Метрики: клик по ссылке трипваера и по ссылке основного продукта.
+// Хост берётся из ссылок воронки, отдельно настраивать не нужно.
+const host = (u: string) => { try { return new URL(u).host; } catch { return ''; } };
+const goals = [
+  { host: host(FUNNEL.leadMagnet.url), goal: 'to_lead' },
+  { host: host(FUNNEL.core.url), goal: 'to_core' },
+].filter((g) => g.host);
+
+interface Props {
+  title: string;
+  description: string;
+  jsonLd?: object;
+  ogImage?: string;
+}
+const { title, description, jsonLd, ogImage } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImageUrl = ogImage ? new URL(ogImage, Astro.site).toString() : null;
+---
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon-32.png" type="image/png" />
+    <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:locale" content={SITE.locale} />
+    <meta property="og:site_name" content={SITE.name} />
+    {ogImageUrl && <meta property="og:image" content={ogImageUrl} />}
+    {ogImageUrl && <meta name="twitter:card" content="summary_large_image" />}
+    {ogImageUrl && <meta name="twitter:image" content={ogImageUrl} />}
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+    {METRIKA_ID > 0 && (
+      <script is:inline define:vars={{ METRIKA_ID, goals }}>
+        (function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+        m[i].l=1*new Date();k=e.createElement(t),a=e.getElementsByTagName(t)[0],
+        k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+        (window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
+        ym(METRIKA_ID, "init", {
+          clickmap: true,
+          trackLinks: true,
+          accurateTrackBounce: true,
+          webvisor: true
+        });
+        document.addEventListener("click", function (e) {
+          var a = e.target && e.target.closest ? e.target.closest("a[href]") : null;
+          if (!a) return;
+          goals.forEach(function (g) {
+            if (a.href.indexOf(g.host) !== -1) ym(METRIKA_ID, "reachGoal", g.goal);
+          });
+        });
+      </script>
+    )}
+    {METRIKA_ID > 0 && (
+      <noscript><div><img src={`https://mc.yandex.ru/watch/${METRIKA_ID}`} style="position:absolute; left:-9999px;" alt="" /></div></noscript>
+    )}
+  </head>
+  <body>
+    <Header />
+    <slot />
+    <Footer />
+    <script is:inline>
+      // Кнопка «Скопировать» на промпт-боксах и обычных код-блоках
+      document.querySelectorAll('.prompt-box').forEach(function (box) {
+        if (box.querySelector('.copy-btn')) return;
+        var btn = document.createElement('button');
+        btn.className = 'copy-btn';
+        btn.textContent = 'Скопировать';
+        btn.addEventListener('click', function () {
+          var text = (box.querySelector('pre') || box).innerText;
+          navigator.clipboard.writeText(text).then(function () {
+            btn.textContent = 'Скопировано';
+            setTimeout(function () { btn.textContent = 'Скопировать'; }, 1600);
+          });
+        });
+        box.appendChild(btn);
+      });
+      document.querySelectorAll('.prose pre').forEach(function (pre) {
+        if (pre.closest('.prompt-box')) return;
+        var wrap = document.createElement('div');
+        wrap.className = 'code-wrap';
+        pre.parentNode.insertBefore(wrap, pre);
+        wrap.appendChild(pre);
+        var btn = document.createElement('button');
+        btn.className = 'code-copy';
+        btn.textContent = 'Скопировать';
+        btn.addEventListener('click', function () {
+          navigator.clipboard.writeText(pre.innerText).then(function () {
+            btn.textContent = 'Скопировано';
+            setTimeout(function () { btn.textContent = 'Скопировать'; }, 1600);
+          });
+        });
+        wrap.appendChild(btn);
+      });
+    </script>
+  </body>
+</html>

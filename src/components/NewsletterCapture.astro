@@ -1,0 +1,119 @@
+---
+// Подписка на регулярную рассылку (ставится в статьи, где лид-магнит не нужен).
+// Адрес обработчика - SUBSCRIBE_ENDPOINT из site.ts, пустой = блок не выводится.
+// Счётчик подписчиков тянется из <endpoint>/count, если обработчик его отдаёт.
+import { SUBSCRIBE_ENDPOINT } from '../site';
+---
+{SUBSCRIBE_ENDPOINT && (
+<div class="ncap" id="ncap" data-endpoint={SUBSCRIBE_ENDPOINT}>
+  <p class="nc-tag">Рассылка</p>
+  <p class="nc-title">Подпишись на еженедельную рассылку</p>
+  <p class="nc-sub">Разборы и материалы по теме портала. Раз в неделю, без воды и спама.</p>
+  <form class="nc-form" id="nc-form">
+    <input class="nc-mail" type="email" name="email" placeholder="Твоя почта" required autocomplete="email" />
+    <input class="nc-hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+    <button class="btn nc-btn" type="submit">Подписаться →</button>
+  </form>
+  <p class="nc-proof" id="nc-proof" hidden><span class="nc-dot"></span><b id="nc-count"></b>&nbsp;<span id="nc-word">человек уже подписались</span></p>
+  <div class="nc-done" hidden>
+    <p class="nc-done-t">Готово! Ты в списке.</p>
+    <p class="nc-note">Первое письмо придёт в ближайшую рассылку. Отписка в один клик.</p>
+  </div>
+</div>
+)}
+
+<style>
+  .ncap {
+    position: relative;
+    border: 2.5px solid var(--ink);
+    border-radius: 18px;
+    background: var(--ink);
+    padding: 26px 30px 22px;
+    margin: 2.6em 0;
+    font-family: var(--font-ui);
+    box-shadow: 8px 8px 0 var(--brand);
+  }
+  .ncap::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 24px; right: 24px;
+    height: 5px;
+    background: var(--brand);
+    border-radius: 0 0 4px 4px;
+  }
+  .nc-tag { display: inline-block; background: var(--brand); color: var(--ink); border-radius: 10px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 12px; margin: 0 0 12px; }
+  .nc-title { font-size: 24px; font-weight: 800; line-height: 1.22; color: #fff; margin: 0 0 8px; }
+  .nc-sub { font-size: 15px; line-height: 1.5; color: #d7d7d7; margin: 0 0 16px; }
+  .nc-form { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nc-form[hidden] { display: none; }
+  .nc-mail { flex: 1 1 220px; font: inherit; font-size: 15px; padding: 13px 15px; border: 2px solid #444; border-radius: 12px; background: #fff; color: var(--ink); }
+  .nc-mail::placeholder { color: #888; }
+  .nc-mail:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(255,221,45,0.35); }
+  .nc-btn { white-space: nowrap; font-size: 15.5px; font-weight: 800; padding: 13px 22px; }
+  .nc-hp { position: absolute; left: -5000px; width: 1px; height: 1px; opacity: 0; }
+  .nc-proof { display: flex; align-items: center; font-size: 13.5px; color: #cfcfcf; margin: 14px 0 0; }
+  .nc-proof b { color: var(--brand); font-weight: 800; }
+  .nc-dot { width: 8px; height: 8px; border-radius: 50%; background: #35d07f; margin-right: 8px; box-shadow: 0 0 0 0 rgba(53,208,127,0.6); animation: nc-pulse 2s infinite; }
+  @keyframes nc-pulse { 0% { box-shadow: 0 0 0 0 rgba(53,208,127,0.6); } 70% { box-shadow: 0 0 0 6px rgba(53,208,127,0); } 100% { box-shadow: 0 0 0 0 rgba(53,208,127,0); } }
+  .nc-note { font-size: 12px; color: #9a9a9a; margin: 10px 0 0; }
+  .nc-done-t { font-size: 20px; font-weight: 800; color: #fff; margin: 0 0 8px; }
+</style>
+
+<script>
+  const nbox = document.getElementById('ncap');
+  const nform = document.getElementById('nc-form') as HTMLFormElement | null;
+
+  // Русская плюрализация для «человек подписал(ся/ись/ось)»
+  function subWord(n: number): string {
+    const m10 = n % 10, m100 = n % 100;
+    if (m10 === 1 && m100 !== 11) return 'человек уже подписался';
+    if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'человека уже подписались';
+    return 'человек уже подписалось';
+  }
+
+  // Живой счётчик соц-доказательства
+  (async () => {
+    const proof = document.getElementById('nc-proof');
+    const cEl = document.getElementById('nc-count');
+    const wEl = document.getElementById('nc-word');
+    if (!proof || !cEl || !wEl) return;
+    try {
+      const ep = (document.getElementById('ncap') as HTMLElement | null)?.dataset.endpoint;
+      if (!ep) return;
+      const r = await fetch(ep.replace(/\/$/, '') + '/count', { cache: 'no-cache' });
+      const d = await r.json();
+      const n = Number(d.count);
+      if (!Number.isFinite(n) || n <= 0) return;
+      cEl.textContent = n.toLocaleString('ru-RU');
+      wEl.textContent = subWord(n);
+      proof.hidden = false;
+    } catch {}
+  })();
+
+  if (nform && nbox) {
+    nform.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = nform.querySelector('button')!;
+      const email = (nform.querySelector('.nc-mail') as HTMLInputElement).value;
+      const website = (nform.querySelector('.nc-hp') as HTMLInputElement).value;
+      btn.textContent = 'Секунду…';
+      btn.setAttribute('disabled', '');
+      try {
+        const resp = await fetch(nbox.dataset.endpoint || '', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, website, slug: location.pathname.replace(/^\/guides\/|\/$/g, '') }),
+        });
+        if (!resp.ok) throw new Error('bad status');
+        nform.hidden = true;
+        (nbox.querySelector('.nc-sub') as HTMLElement).hidden = true;
+        (nbox.querySelector('.nc-proof') as HTMLElement).hidden = true;
+        (nbox.querySelector('.nc-done') as HTMLElement).hidden = false;
+      } catch {
+        btn.textContent = 'Подписаться →';
+        btn.removeAttribute('disabled');
+        alert('Что-то пошло не так, попробуй ещё раз');
+      }
+    });
+  }
+</script>

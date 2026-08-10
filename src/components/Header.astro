@@ -1,0 +1,64 @@
+---
+import { SITE, FUNNEL, funnelUrl } from '../site';
+const twUrl = funnelUrl(FUNNEL.leadMagnet.url, FUNNEL.leadMagnet.campaign, 'cta_header', Astro.url.pathname);
+---
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="logo" href="/">
+      {SITE.logo
+        ? <img src={SITE.logo} alt={SITE.name} width="149" height="47" />
+        : <span class="logo-text">{SITE.name}</span>}
+    </a>
+    <nav aria-label="Основная навигация">
+      <a href="/guides">Статьи</a>
+      <a href="/notes">Конспекты</a>
+      <a href="/news">Новости</a>
+      <a class="btn btn-small" href={twUrl}>{FUNNEL.leadMagnet.label}</a>
+    </nav>
+  </div>
+</header>
+
+<style>
+  .site-header {
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
+  }
+  .logo-text {
+    font-family: var(--font-ui);
+    font-weight: 800;
+    font-size: 19px;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+  }
+  .logo img {
+    height: 26px;
+    width: auto;
+    display: block;
+  }
+  nav { display: flex; align-items: center; gap: 24px; }
+  nav a { color: var(--ink); text-decoration: none; font-weight: 500; font-size: 15px; }
+  nav a:hover { color: var(--link); }
+  .btn-small { font-size: 14px; padding: 9px 16px; }
+  .btn-small:hover { color: var(--ink); }
+  @media (max-width: 560px) {
+    .bar { flex-wrap: wrap; row-gap: 10px; }
+    nav { width: 100%; flex-wrap: wrap; justify-content: flex-start; gap: 10px 18px; }
+    nav a { font-size: 14.5px; white-space: nowrap; }
+    .btn-small { font-size: 13px; padding: 8px 12px; }
+  }
+</style>

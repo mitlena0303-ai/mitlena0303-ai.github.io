@@ -1,0 +1,226 @@
+---
+import { getCollection, render } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import LeadMagnet from '../../components/LeadMagnet.astro';
+import EmailCapture from '../../components/EmailCapture.astro';
+import NewsletterCapture from '../../components/NewsletterCapture.astro';
+import { SITE } from '../../site';
+import { readingTime, CATEGORY_SLUGS } from '../../utils';
+
+export async function getStaticPaths() {
+  const guides = await getCollection('guides', ({ data }) => !data.draft);
+  return guides.map((g) => ({ params: { slug: g.id }, props: { guide: g } }));
+}
+
+const { guide } = Astro.props;
+const { Content, headings } = await render(guide);
+const toc = headings.filter((h) => h.depth === 2);
+const minutes = readingTime(guide.body ?? '');
+const pub = guide.data.pubDate;
+const upd = guide.data.updatedDate ?? pub;
+const fmt = (d: Date) => d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+const articleLd = {
+  '@context': 'https://schema.org',
+  '@type': 'Article',
+  headline: guide.data.title,
+  description: guide.data.description,
+  datePublished: pub.toISOString(),
+  dateModified: upd.toISOString(),
+  inLanguage: 'ru',
+  ...(guide.data.cover ? { image: new URL(guide.data.cover, Astro.site).toString() } : {}),
+  author: { '@type': 'Person', name: SITE.author, description: SITE.authorBio },
+  publisher: { '@type': 'Organization', name: SITE.name },
+};
+
+const faqLd = guide.data.faq?.length
+  ? {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: guide.data.faq.map((f) => ({
+        '@type': 'Question',
+        name: f.q,
+        acceptedAnswer: { '@type': 'Answer', text: f.a },
+      })),
+    }
+  : null;
+
+const breadcrumbLd = {
+  '@context': 'https://schema.org',
+  '@type': 'BreadcrumbList',
+  itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'Главная', item: new URL('/', Astro.site).toString() },
+    { '@type': 'ListItem', position: 2, name: 'Статьи', item: new URL('/guides', Astro.site).toString() },
+    { '@type': 'ListItem', position: 3, name: guide.data.title },
+  ],
+};
+
+const jsonLd = faqLd ? [articleLd, faqLd, breadcrumbLd] : [articleLd, breadcrumbLd];
+---
+<Base title={guide.data.title} description={guide.data.description} jsonLd={jsonLd} ogImage={guide.data.cover}>
+  <article class="wrap-narrow">
+    <header class="art-head">
+      <p class="meta">
+        {CATEGORY_SLUGS[guide.data.category] ? (
+          <a href={`/guides/category/${CATEGORY_SLUGS[guide.data.category]}`}>{guide.data.category}</a>
+        ) : (
+          guide.data.category
+        )} · {minutes} мин · обновлено {fmt(upd)}
+      </p>
+      <h1>{guide.data.title}</h1>
+      <p class="lede">{guide.data.description}</p>
+      <p class="byline">
+        <span class="byline-name">{SITE.author}</span> · проверено на практике
+      </p>
+    </header>
+
+    {guide.data.cover && (
+      <img class="cover-img" src={guide.data.cover} alt={guide.data.title} width="1200" height="675" loading="eager" />
+    )}
+
+    {toc.length > 2 && (
+      <nav class="toc" aria-label="Содержание">
+        <p class="meta">в этой статье</p>
+        <ol>
+          {toc.map((h) => (
+            <li><a href={`#${h.slug}`}>{h.text}</a></li>
+          ))}
+        </ol>
+      </nav>
+    )}
+
+    <div class="prose">
+      <Content />
+    </div>
+
+    <div id="ecap-slot">
+      {/* В новичковых рубриках даём лид-магнит, в остальных - подписку на рассылку */}
+      {guide.data.category === 'Старт' ? <EmailCapture /> : <NewsletterCapture />}
+    </div>
+    <script is:inline>
+      // Переносим форму подписки в середину статьи: перед первым H2 после
+      // 50% контента (между секциями). Короткая статья — остаётся после текста.
+      (function () {
+        const slot = document.getElementById('ecap-slot');
+        const prose = document.querySelector('.prose');
+        if (!slot || !prose) return;
+        const kids = Array.from(prose.children);
+        if (kids.length < 14) return;
+        const from = Math.floor(kids.length * 0.5);
+        let anchor = null;
+        for (let i = from; i < kids.length - 2; i++) {
+          if (kids[i].tagName === 'H2') { anchor = kids[i]; break; }
+        }
+        if (!anchor) anchor = kids[from + 1] ? kids[from + 1] : null;
+        if (anchor) prose.insertBefore(slot, anchor);
+      })();
+    </script>
+
+    {guide.data.faq?.length && (
+      <section class="faq" aria-label="Частые вопросы">
+        <h2>Частые вопросы</h2>
+        {guide.data.faq.map((f) => (
+          <details>
+            <summary>{f.q}</summary>
+            <p>{f.a}</p>
+          </details>
+        ))}
+      </section>
+    )}
+
+    <p class="views-line" data-views-slug={guide.id} hidden></p>
+
+    <aside class="author-box">
+      <p class="author-name">{SITE.author}</p>
+      <p class="author-bio">{SITE.authorBio}</p>
+    </aside>
+  </article>
+
+  <script>
+    (async () => {
+      const el = document.querySelector('[data-views-slug]');
+      if (!el) return;
+      try {
+        const r = await fetch('/views.json', { cache: 'no-cache' });
+        const d = await r.json();
+        const n = d.views && d.views[el.getAttribute('data-views-slug')];
+        if (!n) return;
+        const mod10 = n % 10, mod100 = n % 100;
+        let word = 'просмотров';
+        if (mod10 === 1 && mod100 !== 11) word = 'просмотр';
+        else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) word = 'просмотра';
+        el.textContent = n.toLocaleString('ru-RU') + ' ' + word;
+        el.hidden = false;
+      } catch (e) {}
+    })();
+  </script>
+
+  <div class="wrap-narrow"><LeadMagnet /></div>
+</Base>
+
+<style>
+  .art-head { padding: 56px 0 8px; }
+  .art-head h1 {
+    font-size: clamp(30px, 5vw, 46px);
+    margin: 12px 0 16px;
+  }
+  .lede {
+    font-family: var(--font-serif);
+    font-size: 20px;
+    line-height: 1.55;
+    color: #444;
+    margin: 0 0 10px;
+  }
+  .byline { font-size: 14px; color: var(--noise); margin: 0 0 8px; }
+  .byline-name { font-weight: 600; color: var(--ink); }
+  .cover-img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius);
+    margin: 18px 0 8px;
+  }
+  .toc {
+    background: var(--bg-soft);
+    border-radius: var(--radius);
+    padding: 20px 26px;
+    margin: 26px 0 8px;
+  }
+  .toc ol { margin: 8px 0 0; padding-left: 20px; }
+  .toc li { margin: 6px 0; font-size: 15px; }
+  .toc a { color: var(--ink); }
+  .toc a:hover { color: var(--link); }
+  .faq { margin-top: 48px; }
+  .faq h2 { font-size: 26px; margin-bottom: 16px; }
+  .faq details {
+    background: var(--bg-soft);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin: 10px 0;
+  }
+  .faq summary {
+    font-weight: 600;
+    color: var(--ink);
+    cursor: pointer;
+    font-size: 16px;
+  }
+  .faq details p {
+    margin: 10px 0 2px;
+    font-size: 15.5px;
+    line-height: 1.55;
+  }
+  .views-line {
+    margin-top: 40px;
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--noise);
+  }
+  .author-box {
+    margin-top: 48px;
+    padding: 22px 26px;
+    background: var(--bg-soft);
+    border-radius: var(--radius);
+  }
+  .author-name { font-weight: 700; color: var(--ink); margin: 0 0 6px; }
+  .author-bio { margin: 0; font-size: 14.5px; color: #555; }
+</style>

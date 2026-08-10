@@ -1,0 +1,45 @@
+---
+import { FUNNEL, funnelUrl } from '../site';
+const twUrl = funnelUrl(FUNNEL.leadMagnet.url, FUNNEL.leadMagnet.campaign, 'cta_block', Astro.url.pathname);
+const coreUrl = funnelUrl(FUNNEL.core.url, FUNNEL.core.campaign, 'cta_block', Astro.url.pathname);
+---
+<section class="lead" aria-label="Курс «Опора»">
+  <div class="inner">
+    <div class="txt">
+      <h2>Курс «Опора»</h2>
+      <p>
+        8 недель, чтобы пройти развод как кризис, а не как крушение: стабилизация, защита ребёнка
+        от конфликта и пересборка жизни. Начинается с <a href={twUrl}>бесплатной диагностики</a>,
+        на ней вместе разбираем твою ситуацию и подходит ли тебе курс.
+      </p>
+    </div>
+    <a class="btn btn-dark" href={coreUrl}>Записаться на диагностику</a>
+  </div>
+</section>
+
+<style>
+  .lead { margin: 72px 0 0; }
+  .inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 28px;
+    flex-wrap: wrap;
+    background: var(--brand);
+    border-radius: 20px;
+    padding: 36px 40px;
+  }
+  .txt { max-width: 60ch; }
+  .inner h2 { margin: 0 0 8px; font-size: 26px; }
+  .inner p { margin: 0; color: #1a1a1a; font-size: 16px; }
+  .inner p a { color: #1a1a1a; font-weight: 600; }
+  .btn-dark {
+    background: var(--ink);
+    color: #fff;
+    white-space: nowrap;
+  }
+  .btn-dark:hover { background: #222; color: #fff; }
+  @media (max-width: 560px) {
+    .inner { padding: 26px 22px; }
+  }
+</style>

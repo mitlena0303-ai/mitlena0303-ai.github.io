@@ -1,0 +1,121 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import GuideCard from '../../components/GuideCard.astro';
+import { SITE } from '../../site';
+import { readingTime, CATEGORY_SLUGS, plural } from '../../utils';
+
+const guides = (await getCollection('guides', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const categories = [...new Set(guides.map((g) => g.data.category))];
+---
+<Base
+  title={`Все статьи — ${SITE.name}`}
+  description={`Все статьи ${SITE.name}: ${categories.join(', ').toLowerCase()}. По делу, без воды, на личном опыте.`}
+>
+  <section class="wrap head">
+    <h1>Все статьи</h1>
+    <p class="meta">{guides.length} {plural(guides.length, 'статья', 'статьи', 'статей')} · обновляем каждую неделю</p>
+    <div class="chips">
+      {categories.filter((c) => CATEGORY_SLUGS[c]).map((c) => (
+        <a class="chip" href={`/guides/category/${CATEGORY_SLUGS[c]}`}>{c}</a>
+      ))}
+    </div>
+  </section>
+  <section class="wrap">
+    <div class="sortbar">
+      <button class="sort-btn active" data-sort="date">Сначала новые</button>
+      <button class="sort-btn" data-sort="views">По просмотрам</button>
+    </div>
+    <div class="grid" id="guides-grid">
+      {guides.map((g) => (
+        <GuideCard
+          slug={g.id}
+          title={g.data.title}
+          description={g.data.description}
+          category={g.data.category}
+          minutes={readingTime(g.body ?? '')}
+          date={g.data.updatedDate ?? g.data.pubDate}
+          coverWord={g.data.coverWord}
+          coverColor={g.data.coverColor}
+          coverImage={g.data.cover}
+        />
+      ))}
+    </div>
+  </section>
+
+  <script>
+    (async () => {
+      let views = {};
+      try {
+        const r = await fetch('/views.json', { cache: 'no-cache' });
+        views = (await r.json()).views || {};
+      } catch (e) { return; }
+      const grid = document.getElementById('guides-grid');
+      if (!grid) return;
+      const cards = [...grid.querySelectorAll('a.card')];
+      const plural = (n) => {
+        const m10 = n % 10, m100 = n % 100;
+        if (m10 === 1 && m100 !== 11) return 'просмотр';
+        if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'просмотра';
+        return 'просмотров';
+      };
+      cards.forEach((c, i) => {
+        c.dataset.order = i;
+        const slug = (c.getAttribute('href') || '').replace(/^\/guides\//, '').replace(/\/$/, '');
+        const n = views[slug] || 0;
+        c.dataset.views = n;
+        if (n > 0) {
+          const meta = c.querySelector('.meta');
+          if (meta) meta.textContent += ' · ' + n.toLocaleString('ru-RU') + ' ' + plural(n);
+        }
+      });
+      document.querySelectorAll('.sort-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.sort-btn').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          const byViews = btn.dataset.sort === 'views';
+          const sorted = [...cards].sort((a, b) => byViews
+            ? (+b.dataset.views) - (+a.dataset.views)
+            : (+a.dataset.order) - (+b.dataset.order));
+          sorted.forEach((c) => grid.appendChild(c));
+        });
+      });
+    })();
+  </script>
+</Base>
+
+<style>
+  .head { padding: 52px 0 32px; }
+  .head h1 { font-size: clamp(32px, 4.5vw, 48px); margin: 0 0 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+  .chip {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--bg-soft);
+    border-radius: 20px;
+    padding: 8px 16px;
+    text-decoration: none;
+  }
+  .chip:hover { background: var(--brand); color: var(--ink); }
+  .sortbar { display: flex; gap: 10px; margin: 0 0 24px; }
+  .sort-btn {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--bg-soft);
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+  .sort-btn.active { background: var(--brand); }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 36px 28px;
+  }
+</style>

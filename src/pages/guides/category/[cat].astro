@@ -1,0 +1,57 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../../layouts/Base.astro';
+import GuideCard from '../../../components/GuideCard.astro';
+import { SITE } from '../../../site';
+import { readingTime, CATEGORY_SLUGS, CATEGORY_INTRO } from '../../../utils';
+
+export async function getStaticPaths() {
+  const guides = await getCollection('guides', ({ data }) => !data.draft);
+  const cats = [...new Set(guides.map((g) => g.data.category))];
+  return cats
+    .filter((c) => CATEGORY_SLUGS[c])
+    .map((c) => ({
+      params: { cat: CATEGORY_SLUGS[c] },
+      props: { category: c, guides: guides.filter((g) => g.data.category === c) },
+    }));
+}
+
+const { category, guides } = Astro.props;
+const sorted = guides.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+const intro = CATEGORY_INTRO[category] ?? '';
+---
+<Base title={`${category}: статьи — ${SITE.name}`} description={intro}>
+  <section class="wrap head">
+    <p class="meta"><a href="/guides">Все статьи</a> · {sorted.length} в разделе</p>
+    <h1>{category}</h1>
+    <p class="sub">{intro}</p>
+  </section>
+  <section class="wrap">
+    <div class="grid">
+      {sorted.map((g) => (
+        <GuideCard
+          slug={g.id}
+          title={g.data.title}
+          description={g.data.description}
+          category={g.data.category}
+          minutes={readingTime(g.body ?? '')}
+          date={g.data.updatedDate ?? g.data.pubDate}
+          coverWord={g.data.coverWord}
+          coverColor={g.data.coverColor}
+          coverImage={g.data.cover}
+        />
+      ))}
+    </div>
+  </section>
+</Base>
+
+<style>
+  .head { padding: 52px 0 32px; }
+  .head h1 { font-size: clamp(32px, 4.5vw, 48px); margin: 6px 0 10px; }
+  .sub { font-size: 17px; color: #555; max-width: 60ch; margin: 0; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 36px 28px;
+  }
+</style>

@@ -1,0 +1,77 @@
+---
+import { coverFor } from '../utils';
+
+interface Props {
+  slug: string;
+  title: string;
+  description: string;
+  category: string;
+  minutes: number;
+  date: Date;
+  coverWord?: string;
+  coverColor?: string;
+  coverImage?: string;
+}
+const { slug, title, description, category, minutes, date, coverWord, coverColor, coverImage } = Astro.props;
+const cover = coverFor(category, coverWord, coverColor);
+const dateStr = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+---
+<a class="card" href={`/guides/${slug}`}>
+  {coverImage ? (
+    <span class="cover">
+      <img src={coverImage} alt="" width="600" height="400" loading="lazy" />
+    </span>
+  ) : (
+    <span class="cover" style={`background:${cover.color}`} aria-hidden="true">
+      <span class="cover-word">{cover.word}</span>
+    </span>
+  )}
+  <span class="meta">{category} · {minutes} мин · {dateStr}</span>
+  <h3>{title}</h3>
+  <p class="desc">{description}</p>
+</a>
+
+<style>
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .cover {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 3 / 2;
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: transform 0.18s ease;
+  }
+  .card:hover .cover { transform: scale(1.015); }
+  .cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .cover-word {
+    font-weight: 800;
+    font-size: clamp(28px, 3.2vw, 40px);
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    transform: rotate(-4deg);
+  }
+  .card h3 {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.25;
+  }
+  .card:hover h3 { color: var(--link); }
+  .desc {
+    margin: 0;
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: #555;
+  }
+</style>

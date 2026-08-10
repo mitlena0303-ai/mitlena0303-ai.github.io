@@ -1,0 +1,18 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE } from '../site';
+---
+<Base title={`Страница не найдена — ${SITE.name}`} description="Такой страницы нет. Посмотри все статьи портала.">
+  <section class="wrap nf">
+    <p class="meta">ошибка 404</p>
+    <h1>Такой страницы нет</h1>
+    <p class="sub">Возможно, статья переехала или в адресе опечатка. Всё, что есть на сайте, лежит в каталоге.</p>
+    <a class="btn" href="/guides">Смотреть все статьи</a>
+  </section>
+</Base>
+
+<style>
+  .nf { padding: 96px 0; }
+  .nf h1 { font-size: clamp(32px, 5vw, 52px); margin: 10px 0 14px; }
+  .sub { font-size: 17px; color: #555; max-width: 50ch; margin: 0 0 24px; }
+</style>

@@ -1,0 +1,95 @@
+---
+// Email-захват внутри статьи: почта в обмен на лид-магнит.
+// Адрес обработчика и тексты берутся из site.ts (SUBSCRIBE_ENDPOINT, LEAD_MAGNET).
+// Пустой SUBSCRIBE_ENDPOINT = блок не выводится.
+import { SUBSCRIBE_ENDPOINT, LEAD_MAGNET } from '../site';
+---
+{SUBSCRIBE_ENDPOINT && (
+<div class="ecap" id="ecap" data-endpoint={SUBSCRIBE_ENDPOINT}>
+  <p class="ec-tag">{LEAD_MAGNET.tag}</p>
+  <p class="ec-title">{LEAD_MAGNET.title}</p>
+  <ul class="ec-list">
+    {LEAD_MAGNET.bullets.map((b) => <li>{b}</li>)}
+  </ul>
+  <form class="ec-form" id="ec-form">
+    <input class="ec-mail" type="email" name="email" placeholder="Твоя почта" required autocomplete="email" />
+    <input class="ec-hp" type="text" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
+    <button class="btn ec-btn" type="submit">Забрать →</button>
+  </form>
+  <p class="ec-note">Пришлём сразу. Дальше раз в неделю: новые разборы. Отписка в один клик.</p>
+  <div class="ec-done" hidden>
+    <p class="ec-done-t">Готово, забирай!</p>
+    <a class="btn" href={LEAD_MAGNET.file} target="_blank" rel="noopener">Скачать PDF →</a>
+    <p class="ec-note">Копия уедет на почту вместе со свежими разборами.</p>
+  </div>
+</div>
+)}
+
+<style>
+  .ecap {
+    position: relative;
+    border: 2.5px solid var(--ink);
+    border-radius: 18px;
+    background: var(--ink);
+    padding: 26px 30px 22px;
+    margin: 2.6em 0;
+    font-family: var(--font-ui);
+    box-shadow: 8px 8px 0 var(--brand);
+  }
+  /* жёлтая полоса-акцент сверху карточки */
+  .ecap::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 24px; right: 24px;
+    height: 5px;
+    background: var(--brand);
+    border-radius: 0 0 4px 4px;
+  }
+  .ec-tag { display: inline-block; background: var(--brand); color: var(--ink); border-radius: 10px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 12px; margin: 0 0 12px; }
+  .ec-title { font-size: 24px; font-weight: 800; line-height: 1.22; color: #fff; margin: 0 0 12px; }
+  .ec-list { margin: 0 0 18px; padding: 0; font-size: 14.5px; color: #eaeaea; list-style: none; }
+  .ec-list li { margin: 7px 0; padding-left: 26px; position: relative; }
+  .ec-list li::before { content: '✓'; position: absolute; left: 0; top: -1px; color: var(--brand); font-weight: 800; }
+  .ec-form { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ec-form[hidden] { display: none; }
+  .ec-mail { flex: 1 1 220px; font: inherit; font-size: 15px; padding: 13px 15px; border: 2px solid #444; border-radius: 12px; background: #fff; color: var(--ink); }
+  .ec-mail::placeholder { color: #888; }
+  .ec-mail:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(255,221,45,0.35); }
+  .ec-btn { white-space: nowrap; font-size: 15.5px; font-weight: 800; padding: 13px 22px; }
+  .ec-hp { position: absolute; left: -5000px; width: 1px; height: 1px; opacity: 0; }
+  .ec-note { font-size: 12px; color: #9a9a9a; margin: 12px 0 0; }
+  .ec-done .btn { margin-top: 4px; }
+  .ec-done-t { font-size: 20px; font-weight: 800; color: #fff; margin: 0 0 10px; }
+</style>
+
+<script>
+  const box = document.getElementById('ecap');
+  const form = document.getElementById('ec-form') as HTMLFormElement | null;
+  const endpoint = box?.dataset.endpoint || '';
+  if (form && box && endpoint) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = form.querySelector('button')!;
+      const email = (form.querySelector('.ec-mail') as HTMLInputElement).value;
+      const website = (form.querySelector('.ec-hp') as HTMLInputElement).value;
+      btn.textContent = 'Секунду…';
+      btn.setAttribute('disabled', '');
+      try {
+        const resp = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, website, slug: location.pathname.replace(/^\/guides\/|\/$/g, '') }),
+        });
+        if (!resp.ok) throw new Error('bad status');
+        form.hidden = true;
+        (box.querySelector('.ec-list') as HTMLElement).hidden = true;
+        (box.querySelector('.ec-note') as HTMLElement).hidden = true;
+        (box.querySelector('.ec-done') as HTMLElement).hidden = false;
+      } catch {
+        btn.textContent = 'Хочу пак →';
+        btn.removeAttribute('disabled');
+        alert('Что-то пошло не так, попробуй ещё раз');
+      }
+    });
+  }
+</script>

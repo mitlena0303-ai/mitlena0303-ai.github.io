@@ -1,0 +1,115 @@
+---
+import { getCollection } from 'astro:content';
+import Base from '../../layouts/Base.astro';
+import { SITE } from '../../site';
+
+const notes = (await getCollection('notes', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const topicCounts = new Map<string, number>();
+for (const n of notes) {
+  for (const t of n.data.topics) topicCounts.set(t, (topicCounts.get(t) ?? 0) + 1);
+}
+const topics = [...topicCounts.entries()].sort((a, b) => b[1] - a[1]);
+const fmt = (d: Date) => d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+// Обложка плитки = превью видео с YouTube
+const ytId = (u = '') => (u.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([\w-]{11})/) || [])[1] || null;
+const coverOf = (n: (typeof notes)[number]) => {
+  const v = ytId(n.data.videoUrl);
+  return v ? `https://img.youtube.com/vi/${v}/hqdefault.jpg` : n.data.cover;
+};
+---
+<Base
+  title={`Конспекты видео — ${SITE.name}`}
+  description="Разбираем сильные видео о разводе и отношениях в конспекты: суть без воды, практика, ссылка на источник. Фильтр по темам."
+>
+  <section class="wrap head">
+    <h1>Конспекты видео</h1>
+    <p class="sub">
+      Берём сильные видео о разводе и отношениях и выжимаем в конспект: суть и практика.
+      15 минут чтения вместо часа просмотра.
+    </p>
+    <div class="chips" id="topicChips">
+      <button class="chip active" data-topic="all">Все ({notes.length})</button>
+      {topics.map(([t, n]) => (
+        <button class="chip" data-topic={t}>{t} ({n})</button>
+      ))}
+    </div>
+  </section>
+
+  <section class="wrap">
+    <div class="grid" id="notesGrid">
+      {notes.map((n) => (
+        <a class="card" href={`/notes/${n.id}`} data-topics={n.data.topics.join('|')}>
+          {coverOf(n) && (
+            <span class="cover"><img src={coverOf(n)} alt="" width="480" height="270" loading="lazy" /></span>
+          )}
+          <span class="meta">{n.data.channel} · {n.data.duration ?? 'видео'} · {n.data.level}</span>
+          <h3>{n.data.title}</h3>
+          <p class="desc">{n.data.description}</p>
+          <span class="tags">{n.data.topics.map((t) => <span class="tag">#{t}</span>)}</span>
+          <span class="meta">{fmt(n.data.pubDate)}</span>
+        </a>
+      ))}
+    </div>
+  </section>
+
+  <script is:inline>
+    document.getElementById('topicChips').addEventListener('click', function (e) {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      document.querySelectorAll('#topicChips .chip').forEach((c) => c.classList.remove('active'));
+      chip.classList.add('active');
+      const topic = chip.dataset.topic;
+      document.querySelectorAll('#notesGrid .card').forEach((card) => {
+        const has = topic === 'all' || card.dataset.topics.split('|').includes(topic);
+        card.style.display = has ? '' : 'none';
+      });
+    });
+  </script>
+</Base>
+
+<style>
+  .head { padding: 52px 0 28px; }
+  .head h1 { font-size: clamp(32px, 4.5vw, 48px); margin: 0 0 10px; }
+  .sub { font-size: 17px; color: #555; max-width: 60ch; margin: 0 0 18px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip {
+    font-family: var(--font-ui);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--bg-soft);
+    border: none;
+    border-radius: 20px;
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+  .chip:hover { background: #efefef; }
+  .chip.active { background: var(--brand); }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 36px 28px;
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .cover {
+    display: block;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--bg-soft);
+  }
+  .cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .card h3 { margin: 0; font-size: 20px; line-height: 1.25; }
+  .card:hover h3 { color: var(--link); }
+  .desc { margin: 0; font-size: 14.5px; line-height: 1.5; color: #555; }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .tag { font-size: 12.5px; font-weight: 600; color: var(--noise); }
+</style>
